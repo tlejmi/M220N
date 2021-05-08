@@ -18,7 +18,7 @@ namespace Migrator
         static IMongoCollection<Movie> _moviesCollection;
 
         // TODO: Update this connection string as needed.
-        static string mongoConnectionString = "";
+        static string mongoConnectionString = "mongodb+srv://m220student:m220password@mflix.pauo2.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
         
         static async Task Main(string[] args)
         {
@@ -35,9 +35,13 @@ namespace Migrator
                 // datePipelineResults. You will need to use a ReplaceOneModel<Movie>
                 // (https://api.mongodb.com/csharp/current/html/T_MongoDB_Driver_ReplaceOneModel_1.htm).
                 //
-                // // bulkWriteDatesResult = await _moviesCollection.BulkWriteAsync(...
 
-                Console.WriteLine($"{bulkWriteDatesResult.ProcessedRequests.Count} records updated.");
+                List<ReplaceOneModel<Movie>> requests = new List<ReplaceOneModel<Movie>>();
+                datePipelineResults.ForEach(x=>requests.Add(new ReplaceOneModel<Movie>(Builders<Movie>.Filter.Where(z=>z.Id == x.Id), x)));
+                bulkWriteDatesResult = await _moviesCollection.BulkWriteAsync(requests); 
+
+
+               Console.WriteLine($"{bulkWriteDatesResult.ProcessedRequests.Count} records updated.");
             }
 
             var ratingPipelineResults = TransformRatingPipeline();
@@ -50,8 +54,9 @@ namespace Migrator
                 // ratingPipelineResults. You will need to use a ReplaceOneModel<Movie>
                 // (https://api.mongodb.com/csharp/current/html/T_MongoDB_Driver_ReplaceOneModel_1.htm).
                 //
-                // // bulkWriteRatingsResult = await _moviesCollection.BulkWriteAsync(...
-
+                List<ReplaceOneModel<Movie>> requests = new List<ReplaceOneModel<Movie>>();
+                ratingPipelineResults.ForEach(x => requests.Add(new ReplaceOneModel<Movie>(Builders<Movie>.Filter.Where(z => z.Id == x.Id), x)));
+                bulkWriteRatingsResult = await _moviesCollection.BulkWriteAsync(requests); 
                 Console.WriteLine($"{bulkWriteRatingsResult.ProcessedRequests.Count} records updated.");
             }
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using M220N.Models;
 using M220N.Models.Responses;
 using M220N.Repositories;
 using Microsoft.AspNetCore.Authorization;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Driver;
 using Newtonsoft.Json;
 
 namespace M220N.Controllers
@@ -37,13 +39,13 @@ namespace M220N.Controllers
         {
             var user = await UserController.GetUserFromTokenAsync(_userRepository, Request);
 
-            var movieId = new ObjectId(input.MovieId);
-            var result = await _commentsRepository.AddCommentAsync(user, movieId, input.Comment);
+             var movieId = new ObjectId(input.MovieId);
+             var result = await _commentsRepository.AddCommentAsync(user, movieId, input.Comment);
 
-            return result != null
-                ? (ActionResult) Ok(new CommentResponse(
-                    result.Comments.OrderByDescending(d => d.Date).ToList()))
-                : BadRequest(new CommentResponse());
+             return result != null
+                 ? (ActionResult) Ok(new CommentResponse(
+                     result.Comments.OrderByDescending(d => d.Date).ToList()))
+                 : BadRequest(new CommentResponse());
         }
 
         /// <summary>
@@ -57,6 +59,8 @@ namespace M220N.Controllers
         public async Task<ActionResult> UpdateCommentAsync([FromBody] MovieCommentInput input)
         {
             var user = await UserController.GetUserFromTokenAsync(_userRepository, Request);
+
+
 
             var movieId = new ObjectId(input.MovieId);
             var commentId = new ObjectId(input.CommentId);

@@ -82,18 +82,31 @@ namespace M220N.Repositories
         /// <returns>The <see cref="Movie" /></returns>
         public async Task<Movie> GetMovieAsync(string movieId, CancellationToken cancellationToken = default)
         {
+
+            var result = ObjectId.TryParse(movieId, out _);
+            if (!result)
+            {
+                return null; 
+            }
             try
             {
                 return await _moviesCollection.Aggregate()
                     .Match(Builders<Movie>.Filter.Eq(x => x.Id, movieId))
-                    // Ticket: Get Comments
-                    // Add a lookup stage that includes the
-                    // comments associated with the retrieved movie
+                    .Lookup(
+                        _commentsCollection,
+                        m => m.Id,
+                        c => c.MovieId,
+                        (Movie m) => m.Comments
+                    )
                     .FirstOrDefaultAsync(cancellationToken);
             }
-
             catch (Exception ex)
             {
+
+                //if (ex is FormatException)
+                //{
+                //    return null; 
+                //}
                 // TODO Ticket: Error Handling
                 // Catch the exception and check the exception type and message contents.
                 // Return null if the exception is due to a bad/missing Id. Otherwise,

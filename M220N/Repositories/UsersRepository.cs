@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using M220N.Models;
+    using M220N.Controllers;
+    using M220N.Models;
 using M220N.Models.Responses;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Conventions;
@@ -78,8 +79,9 @@ namespace M220N.Repositories
                     HashedPassword = PasswordHashOMatic.Hash(password)
                 };
 
+                var writeConcern = WriteConcern.WMajority;
 
-                await _usersCollection.InsertOneAsync(user, cancellationToken: cancellationToken); 
+                await _usersCollection.WithWriteConcern(writeConcern).InsertOneAsync(user,cancellationToken: cancellationToken); 
 
                 // TODO Ticket: User Management
                 // Create a user with the "Name", "Email", and "HashedPassword" fields.
@@ -251,13 +253,16 @@ namespace M220N.Repositories
                 // TODO Ticket: User Preferences
                 // Use the data in "preferences" to update the user's preferences.
                 //
-                // updateResult = await _usersCollection.UpdateOneAsync(
-                //    new BsonDocument(),
-                //    Builders<User>.Update.Set("TODO", preferences),
-                //    /* Be sure to pass a new UpdateOptions object here,
-                //       setting IsUpsert to false! */
-                //    new UpdateOptions(),
-                //    cancellationToken);
+                var filer = Builders<User>.Filter.Eq(x => x.Email, email);
+                updateResult = await _usersCollection.UpdateOneAsync(
+                    filer
+                   ,
+                   Builders<User>.Update.Set("preferences", preferences),
+                   new UpdateOptions()
+                   {
+                       IsUpsert = false
+                   },
+                   cancellationToken);
 
                 return updateResult.MatchedCount == 0
                     ? new UserResponse(false, "No user found with that email")

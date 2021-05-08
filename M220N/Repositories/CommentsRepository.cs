@@ -47,6 +47,8 @@ namespace M220N.Repositories
                     MovieId = movieId
                 };
 
+                await _commentsCollection.InsertOneAsync(newComment, cancellationToken: cancellationToken); 
+
                 // Ticket: Add a new Comment
                 // Implement InsertOneAsync() to insert a
                 // new comment into the comments collection.
@@ -77,13 +79,11 @@ namespace M220N.Repositories
             // existing comment. Remember that only the original
             // comment owner can update the comment!
             //
-            // // return await _commentsCollection.UpdateOneAsync(
-            // // Builders<Comment>.Filter.Where(...),
-            // // Builders<Comment>.Update.Set(...).Set(...),
-            // // new UpdateOptions { ... } ,
-            // // cancellationToken);
-
-            return null;
+            return await _commentsCollection.UpdateOneAsync(
+            Builders<Comment>.Filter.Where(x=>x.Id == commentId && x.MovieId == movieId && x.Email == user.Email),
+            Builders<Comment>.Update.Set(c=>c.Text,comment).Set(co=>co.Date,DateTime.UtcNow),
+            new UpdateOptions { IsUpsert = false},
+            cancellationToken);
         }
 
         /// <summary>
@@ -101,37 +101,42 @@ namespace M220N.Repositories
             // Implement DeleteOne() to delete an
             // existing comment. Remember that only the original
             // comment owner can delete the comment!
-            _commentsCollection.DeleteOne(
+            await _commentsCollection.DeleteOneAsync(
                 Builders<Comment>.Filter.Where(
                     c => c.MovieId == movieId
-                         && c.Id == commentId));
+                         && c.Id == commentId && c.Email == user.Email),cancellationToken);
 
             return await _moviesRepository.GetMovieAsync(movieId.ToString(), cancellationToken);
         }
 
-        public async Task<TopCommentsProjection> MostActiveCommentersAsync()
+        public async Task<TopCommentsProjection> MostActiveCommentersAsync(CancellationToken cancellationToken = default)
         {
-            /**
-                TODO Ticket: User Report
-                Build a pipeline that returns the 20 most frequent commenters on the MFlix
-                site. You can do this by counting the number of occurrences of a user's
-                email in the `comments` collection.
-
-                In addition, set the ReadConcern on the _commentsCollection to
-                ensure the most accurate reads occur.
-            */
             try
             {
                 List<ReportProjection> result = null;
+
+                var projectionFilter = Builders<ReportProjection>.Projection
+                    .Include(m => m.Id)
+                    .Include(m => m.Count); 
                 // TODO Ticket: User Report
                 // Return the 20 users who have commented the most on MFlix. You will need to use
                 // the Group, Sort, Limit, and Project methods of the Aggregation pipeline.
                 //
-                // // result = await _commentsCollection
-                // //   .WithReadConcern(...)
-                // //   .Aggregate()
-                // //   .Group(...)
-                // //   .Sort(...).Limt(...).Project(...).ToListAsync()
+                var projectionDefinition = new BsonDocument
+                {
+                    {"_id", "$email"},
+                    {"count", new BsonDocument("$sum", 1)}
+                };
+                result = await _commentsCollection
+                    .WithReadConcern(ReadConcern.Majority)
+                    .Aggregate()
+                    .Group(projectionDefinition)
+                    .Sort(new BsonDocument("count", -1)).Limit(20).Project<ReportProjection>(new BsonDocument()
+                    {
+                        { "_Id", "$id"},
+                        { "count" , "$count" }
+                    })
+                        .ToListAsync(cancellationToken: cancellationToken); 
 
                 return new TopCommentsProjection(result);
             }

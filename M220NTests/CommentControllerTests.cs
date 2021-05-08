@@ -55,6 +55,7 @@ namespace M220NTests
             var appSettingsOptions = Options.Create(jwt);
             _userController = new UserController(_userRepository, _commentRepository, appSettingsOptions);
             _commentController = new CommentController(_commentRepository, _userRepository, appSettingsOptions);
+            var user = new User { Name = "Test User 1000", Email = "testuser10000@mongodb.com", Password = "hdfn123?" };
         }
         [Test]
         public async Task TestAddsComment()
